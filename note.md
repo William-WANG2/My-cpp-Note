@@ -1,3 +1,5 @@
+
+
 # C++ Note
 
 ## Review of Basic Concepts
@@ -175,6 +177,49 @@ class std::string {
 **vector**
 
 similar structure as string (block of contiguous memory on heap)
+
+### `data()` Member Function
+
+* `std::string` and `std::vector` have a `data()` member function
+
+* This returns a  pointer to the container's internal memory buffer
+
+*  For `std::string`, this is equivelant to `c_str()`
+
+* useful when working with APIs written in C
+
+  ````c++
+  void print(int * arr, size_t size);
+  std::vector<int> numbers{1,2,3,4,5};
+  print(numbers.data(), numbers.size());
+  ````
+
+### `swap()`
+
+````c++
+string s1{"Hello"};
+string s2{"World"};
+
+s1.swap(s2);
+
+//There is also a non-member version
+swap(s1, s2);
+````
+
+* This global function has overloads for all built-in and library types.
+
+* Default overload version: If there is no overload for a class, the default implementation will be called.
+
+  ````c++
+  //naive shallow copy
+  Obj temp = obj1;
+  obj1 = obj2;
+  obj2 = temp;
+  ````
+
+  * Notice that if `std::string` uses this version, it can be quite slow! Since it needs to copy all the data over and over
+
+* ==For `std::string`, the swap actually interchange the encapsulated pointers to the data as well as the integer size!==
 
 ### Vscode Configuration for Linkage
 
@@ -525,9 +570,472 @@ T max(const T & t1, const T & t2) {
 * The compiler deduces the needed argument type should be `double`.
 * The compiler will generate a definition of the Max function, in which `T ` is replaced by `double`.
 
+#### Templates and Code Organization
+
+* Compiler only needs to know the function declaration when the function is called. (to check the types are used correctly)
+* For a template function, the compiler must be able to see the definition when the function is called (to generate the instantiated code)
+* Most programmers write the template function inside the header files, so it is included automatically
+* Some programmers write in a `.inc` file and include it seperately.
+
+#### Class Template
+
+We can create class that works with data of any type
+
+````c++
+template<class T>
+class Test {
+  T data;
+  Test(const & T): test(test) {}
+}
+````
+
+To create an instance of that class
+
+````c++
+Test<string> test{"Hello"};
+
+//compiler will generate something like
+class Test_bhckbakc {	//instantiated with a unique name
+	string data;
+  Test(const & string): test(test) {}
+}
+````
+
+When we create an object of a templated class, C++17 compiler can deduce the parameter type. This is known as **_CTAD: Constructor Template Argument Deduction_**
+
+* Similar to calling a templated function
+* The declaration must be initialized
+* The compiler deduces the parameter type from the initializer
+
+````c++
+vector<int> vec{1, 2, 3}	//C++ 11 declared as vector<int>
+vector vec{1, 2, 3}	//C++ 17	deduced as vector<int>
+````
+
+#### typename
+
+````c++
+template<class T>
+
+template<typename T>	//introduced in C++98, class is a bit confusing as template can be instantiated for built-in type as well as classes
+````
+
+### Namespace
+
+* A namespace is used to group together logically related symbols.
+  * typically done within libraries
+* The C++ standard library defines `std` namespace
+* This groups together all the names of the functions, types and variables defined by it.
+
+#### Why?
+
+Large projects may involve several libraries which can lead to name conflicts
+
+#### How to Use
+
+We create a namespace using the namespace keyword and put the symbols we want to declare in this namespace inside the braces.
+
+Every symbol declared in the namespace will have the namespace's name automatically prefixed by the compiler.
+
+````c++
+namespace abc {
+  class Test;	//defines abc::Test
+}
+````
+
+If we want to use that symbol outside the namespace, we put `abc::`in front of it.
+
+````c++
+abc::Test alphaTest;
+````
+
+#### Global Namespace
+
+If a name is not in any namespace, the compiler will assume it to be in the "global namespace". 
+
+* The global namespace has no name
+* If we want to specify that the name is in global scope. We can use ==`::Test`==.
+
+#### Namespace Splitting
+
+Namespaces can be split into different parts in the code, or even over different files.
+
+````c++
+//In abc's Test.h
+namespace abc {
+  class Test {
+    //...
+  };
+}
+
+//In abc's Test.cc
+namespace abc {
+  int Test::do_test(int value) const {
+    //...
+    //The const member functions are the functions which are declared as constant in the program. The object called by these functions cannot be modified. It is recommended to use const keyword so that accidental changes to object are avoided.
+  }
+}
+````
+
+#### Name Hiding
+
+When a symbol is defined in a namespace, it "hides" any symbols of the same name outside the namespace.
+
+````c++
+int x{23};
+namespace abc {
+  int x{47};
+  void func() {
+    cout << x << endl;	//abc::x
+    cout << ::x << endl;	//global x
+  }
+}
+````
+
+#### Using a Declaration
+
+* A `using`keyword will bring a particular version of symbol into the global namespace.
+
+  ````c++
+  using xyz::Test; //"Test" will refer to xyz::Test
+  Test //xyz's Test
+  ::Test //Global Test
+  abc::Test //abc's Test
+  ````
+
+* This takes effect from the using declaration until the end of the ==scope==.
+
+* using directive will bring all things into global namespace, e.g., `using namespace std;`
+
+### Function Pointer
+
+A function's executable code is stored in the memory, and we can get a pointer whose value is the start of the code.
+
+````c++
+void func(int, int);
+auto func_ptr = &func;
+//void (*func_ptr)(int, int) = &func;
+````
+
+ We can use a type alias for a function pointer's type
+
+````c++
+using pfunc = void (*)(int, int);
+````
+
+#### Callable Object
+
+`(*func_ptr)(1, 2);`
+
+A function pointer is a "first class object":
+
+* in short, it means there are no restrictions on the object's use. It's the same as any other object.
+
+  A first class object is an entity that can be dynamically created, destroyed, passed to a function, returned as a value, and have all the rights as other variables in the programming language have.
+
+  > Depending on the language, this can imply:
+  >
+  > - being expressible as an anonymous literal value
+  > - being storable in variables
+  > - being storable in data structures
+  > - having an intrinsic identity (independent of any given name)
+  > - being comparable for equality with other entities
+  > - being passable as a parameter to a procedure/function
+  > - being returnable as the result of a procedure/function
+  > - being constructible at runtime
+  > - being printable
+  > - being readable
+  > - being transmissible among distributed processes
+  > - being storable outside running processes
+
+* We can pass a function pointer as an argument and return a function pointer from the return statement
+
+#### Pros and Cons
+
+* Usages: wrting callbacks: OS, GUI, event-driven code
+* "Raw pointers:" Can be overwritten, null or uninitialized
 
 
 
+## C++ String Interface
 
+### Basic Operation
 
+(All works for C-style string and char, except for the assignment)
+
+* Assignment `s1 = s2`, `s1` will have the same data type as `s2`
+* Appending `s1+=s2`, `s2`'s data will added at the back of `s1`
+* Concatenatation `s1+s2` returns a new string contraining the concatenated information
+* Comparison `s1 cmp s2`, where `cmp` are `==, !=, <, > ,<=, >=`
+
+### Compatiblity with C-style string
+
+* `std::string ` has a member function `c_str()`
+* return a copy of a C-style string, a pointer to a const char `const char * c_style_str = str.c_str()`
+* useful for passing C++ string to a function that takes C string
+
+### Constructor
+
+````c++
+string empty;	//empty string, default constructor
+string hi{"Hello"};
+string triple_x(3, 'x');
+string howdy{'h','e','l','l','o'};	//initializer list
+string hello1(hi, 1); //ello
+string hello2(hi, 1, 3); //ell
+````
+
+### Searching
+
+* `find() `returns the first occurrence of its argument in the string. The argument can be a `char`, `std::string` or a C-style string
+  * It returns the index of the first match
+  * It returns `string::npos` if not find
+    * It is a constant static member value with the highest possible value for an element of type size_t.
+      * It’s a type which is used to represent the size of objects in bytes and is therefore used as the return type by the **sizeof** [operator](http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/stddef.h.html). It is guaranteed to be big enough to contain the size of the biggest object the host system can handle. Basically the maximum permissible size is dependent on the compiler; if the compiler is 32 bit then it is simply a typedef(i.e., alias) for **unsigned int** but if the compiler is 64 bit then it would be a typedef for **unsigned long long**. The **size_t** data type is never negative.
+        Therefore many C library functions like *malloc, memcpy and strlen* declare their arguments and return type as **size_t**. 
+    * It actually means until the end of the [string](https://www.geeksforgeeks.org/string-data-structure/).
+    * It is used as the value for a length parameter in the string's member functions.
+    * As a return value, it is usually used to indicate no matches.
+
+* `rfind()` returns the last occurrence of its argument. By default, this searches from the end to the begining of the string. We can pass a second argument to change it. 
+
+  ````c++
+  string str{"Hello, World"};
+  str.rfind(str, 5);	//return 4, search backwards from the element with index 5
+  ````
+
+* `find_first_of()` and `find_last_of()` search for the first (last) occurrence of any character from the argument string.
+
+  ````c++
+  string vowels{"aeiou"};
+  str.find_first_of(vowels);	//1, "Hello, World", e is the first to appear
+  ````
+
+* similarly, `find_first_not_of()` and `find_last_not_of()`
+
+### Adding Elements
+
+* `append()` adds its argument at the end of the string
+
+  ````c++
+  string hello{'Hello'};
+  hello.append(" World"s);`//Hello World
+  hello.append("Wow!!!!"s, 3, 2);	//Hello World!!
+  ````
+
+* `insert()` 
+
+  ````c++
+  string str{"for"};
+  str.insert(2, "lde"s);	//folder
+  ````
+
+  * insert a substring
+
+    ````c++
+    // insert a substring
+    string str {"xxx"};
+    string str2 {"trombone"};
+    str.insert(1, str2, 4, 2);	//xbox
+    ````
+
+  * insert a `char` multiple times
+
+    ````c++
+    string str3{"cash"};
+    str3.insert(1, 3, 'r');	//crrrash
+    ````
+
+  * insert at the result of a find call
+
+    ````c++
+    auto opos = hello.find('o');
+    hello.insert(opo, 2, 'o'); //hello -> hellooo
+    ````
+
+  * using iterator: ==this is different from the index, as it will insert before the iterator==
+
+    ````c++
+    string str{"ski"};
+    auto last = end(str);
+    str.insert(last, 2, 'l');	//skill
+    ````
+
+    * Iterator Invalidation
+
+      inserting elements may fill up the string's memory buffer. In this case, it will allocate the new buffer and copy the data into the new buffer. However, ==**The saved iterator may still point to the old buffer**==, and they are no longer valid which means using them can cause undefined bahavior.
+
+  ### Removing Elements
+
+  * `erase()`, arguments: $1^{st}$: index of the first element to be erased, $2^{nd}$: number of elements to be erased.
+
+  ````c++
+  auto opos = hello.find('e');
+  if(opos != string::npos) {
+    hello.erase(opos, 2);
+  }				
+  
+  //using iterator
+  auto first = begin(hello);
+  hello.erase(first); //remove the first element
+  
+  hello.erase(begin(hello)+1, end(hello)-1); //erase all elements except the first and the last ones
+  //range is [ ), not include the right most one
+  ````
+
+  * `replace()`, arguments: $1^{st}$: index of the first element to be replaced, $2^{nd}$: the number of characters to be replaced, $3^{rd}$: the characters to replace them
+
+    ````c++
+    string str{"Say Hello!"};
+    
+    auto gdx = str.find("H");
+    str.replace(gdx, 5, "Goodbye");	//Say Goodbye!
+    
+    //iterator
+    string str{"Say Goodbye!"};
+    str.replace(begin(str), begin(str)+3, "Wave"); //not include begin(str)+3
+    ````
+
+  * `assign()`, replace all the characters and replace them. `string str{"Hello"};` `str.assign("Goodbye");`
+
+### Convertion between String and Number
+
+* `to_string`: return ``std::string``, and can take all integers/floating number types. e.g., `string pi{to_string(3.1415926)}`;
+
+* `stoi()` takes `std::string` and returns it as `int`. e.g., `string str{"  314 159"};` ==Result is 314, since it will ignore the leading characers and whenever it encounters a non-numerical type, it will stop==.
+
+  *  Error handling:
+
+    * An optional second argument can be passed which gives the number of characters which are processed.
+    * If there is no error, it is equal to the string's size
+    * If the conversion is partially successful, this gives the index of the first non-numerical value
+    * If it is completely unsuccessful, it throws an error
+    * It is assumed to be decimal base, but you can pass a third argument to change it. Base can be in range $1-36$.
+
+    ````c++
+    size_t n_processed;
+    auto i = stoi(str, &n_processed);
+    
+    if(n_processed < str.size()) {
+      //....
+    }
+    
+    auto j = stoi("2a", nullptr, 16);
+    ````
+
+* Similarly, we have `stod()` for floating point numbers, `stoll()` for long long
+
+## Charactor Functions
+
+### Functions inherited from C
+
+* Defined in `<cctype>`
+
+  ````c++
+  isdigit(c);	//0-9
+  islower(c);	//a-z
+  isupper(c);	//A-Z
+  isspace(c);	//white space
+  ispunct(c);	//?, !, ., ,, etc
+  ````
+
+### Miscellaneous
+
+* `toupper()` and `tolower()` 
+  * example, linux "Y or y": `if toupper(c) == 'Y`
+
+## Files and Streams
+
+* In C++, a file is represented by a sequence of bytes, identified by a file name. It does not care about where the data is stored and how it is stored.
+* File interactions are represented by fstream objects, similar to iostream objects for input/output.
+* fstream always access the file sequentially.
+  * a sequence of bytes
+  * in order
+  * of unknown length
+  * with no structure
+* fstream does not understand file format
+* **Operations:**
+  * Open: 
+    * Connects the fstream object to the file
+    * The files become available to the program
+  * Read:
+    * Data is copied from the file into the program's memory
+  * Write:
+    * Data is copied from the program's memory into the file
+  * Close:
+    * Disconnects the fstream object from the file
+    * The files is no longer available to the program
+  * For each of the operations, the fstream will call the OS's API, and the program will stop and wait the while the operation is performed. Once the operation is done, the API call will return, and the program resumes the execution.
+  * You should close the file opened to avoid the possibility of "too many open files error" (OS refuses to allocate more file), though when C++ program terminates, the runtime will close them automatically.
+
+### File Streams
+
+* `ofstream` and `ifstream` like `ostream (cout)` and `istream(cin)`
+* in earlier C++, fstream's constructor only takes a C-style string for the file name. e.g., `fstream file{"in.txt"};`. However, in C++ 11 or later, it can take `std::string`. e.g., `string str{"in.txt"};`, `fstream file{str};`
+*  can be used as `cin` and `cout`
+* If we want to read a line, we can use `getline(fin, text)`, ignoring and discarding the `\n`.
+* ==When fstream's destructor is called, the file is automatically destroyed. This will cause any unsaved data to be written to the file. Hence, if the fstream object goes out of the scope once we have finished using it, we do not need to explicitly close it, though it is a good practice to do so.==
+
+### Streams and Bufferings
+
+#### Output buffer
+
+* C++ streams use "buffering" to minimize calls to the operating systems.
+* During write operations, data is temporarily held in a memory buffer.
+* The size of the buffer is chosed to match the maximum amout of data that the operating system accepts.
+* When the buffer is full, the stream will remove the data from the buffer and send it to the operating system.
+* This is known as =="flushing"== the output buffer.
+* When are stream buffer flushed?
+  * For `ostream`, it depends on the terminal configuration.
+    * Usually, this is at the end of each line (i.e., if it sees that this is a part of a newline, it will wait for a `\n`)
+    * cout is always flushed before the program reads cin 
+  * ofstream is only flushed when the buffer is full.
+  * ==There is no direct way to flush the **_input stream_**==.
+  * **`std::flush`** allows us to control when the stream's buffer is flushed. `cout << str << std::flushed;`will cause all the data in the memory to be immediately sent to its destination.
+    * However, this significantly affect the performance. So you should only use it when it is really needed, e.g., output the log.
+
+#### Unbuffered Input and Output
+
+* There are some applications where stream buffer is not suitable when the programmers need more control over how data is transmitted.
+
+* e.g., network applications and communicate with the hardware:
+
+  * Data must be transmitted in packets of a specific size
+  * Data may be transmitted at a specific time
+
+* C++ supports lower level of operations on stream
+
+  * These bypass the stream's buffer
+  * No formatting of data. e.g., no discarding of white space.
+
+* **`get()`** fetches the next character from an input stream and **`put()`** sends its argument to output stream. They both take ==a `char`== as an argument
+
+* **To handle more than one chars**, we use `read()`, `write()` functions.
+
+  * As we are not using a buffer managed by the stream, we need to provide our own buffer.
+
+    * For `write()`, the buffer will contain all the data we want to send.
+
+    * For `read()`, the buffer must be large enough to store all the data we expect to receive.
+
+    * Both these functions take $1^{st}$: the address of the buffer, $2^{nd}$: the number of characters in the buffer.
+
+      ````c++
+      const int filesize{10};
+      char filebuf[filesize];
+      //...
+      ifile.read(filebuf, filesize);
+      cout.write(filebuf, filesize);
+      ````
+
+#### `gcount()`
+
+* Often, we need to know how much data an input stream has sent us
+
+  * We may need to allocate the memory to process the data.
+  * To detect partial or incomplete transfers.
+
+* The `gcount()` function will return the number of characters that are actually received.
+
+  `auto nread = ifile.gcount();	//how many bytes did we receive` 
 
